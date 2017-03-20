@@ -1,0 +1,391 @@
++++
+title = "Ansible Workshop"
+subtitle = "introduction"
+date = "2017-01-26T23:02:01-05:00"
+tags = ["ansible", "workshop"]
+categories = ["lab", "developers", "ops"]
+banner = "img/banners/banner-4.jpg"
+toc = true
++++
+
+
+[[Ansible]]
+= Automation for Everyone
+{product-author}
+{product-version}
+:data-uri:
+:icons: font
+:experimental:
+:toc: macro
+:toc-title:
+:prewrap!:
+:source-highlighter: highlightjs
+
+
+
+toc::[]
+
+
+
+
+.Before We Get Started
+****
+[.lead]
+Overview
+
+Today is meant for anyone who has any exposure to Ansible, whether you have used it or not. We are going to start with a short overview (yes, slideware) and then we'll get into the lab as soon as possible. That is where we will spend most of our time.
+
+[.lead]
+Your Responsibilities
+
+* Have a discussion. This will be boring if it's just us up here talking for over 4 hours.
+* Participate. We are going to cut you loose with Ansible here in just a little while. Have questions. Have opinions.
+
+Hopefully you have your laptop with you. If not, please find a shoulder-surfing buddy. See? Not only can we dig into Ansible but you can make a new friend!
+
+[.lead]
+Conventions Used in This Document
+[TIP]
+.Whenever you see a section like this, please pay close attention.  We are leading you through a process.
+====
+
+====
+
+====
+Step 1: Run this command to do something or other
+[source,bash]
+----
+ansible web -m setup
+----
+* Step 2: Edit this file in this specific way
+
+[source,bash]
+----
+---
+ - hosts: web
+   name: This is a play within a playbook
+   become: yes
+   vars:
+     httpd_packages:
+       - httpd
+       - mod_wsgi
+----
+[IMPORTANT]
+Do not cut and paste text from this document.  We really want you to learn ansible during this workshop,
+and part of that experience is typing out YAML and understanding it's syntax, spacing, and alignments.
+====
+
+
+[.lead]
+Location-Specific Information
+[IMPORTANT]
+.WiFi Access
+====
+ssid: `TBD`
+====
+****
+
+
+.Today's Team
+****
+[.lead]
+Jamie Duncan - Cloud Architect
+
+[.lead]
+John Hoffer - Cloud Architect
+
+[.lead]
+Justin Burdine - Cloud Architect
+
+****
+
+Document Copyright
+
+This document was created by and for Red Hat, Inc. It is being released under link:https://creativecommons.org/licenses/by/4.0/[Creative Commons License 4.0]. You are free to re-use it in whole or in part.
+
+You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+
+
+
+=== Exercise 1.0 - Running Ad-hoc commands
+
+****
+
+
+For our first exercise, we are going to run some ad-hoc commands to help you get
+a feel for how Ansible works.  Ansible Ad-Hoc commands enable you to perform tasks
+on remote nodes without having to write a playbook.  They are very useful when you
+simply need to do one or two things quickly and often, to many remote nodes.
+
+[NOTE]
+====
+Like many Linux commands, ```ansible``` allows for long-form options as well as short-form.  For example:
+----
+ansible --module-name ping
+----
+is the same as running
+----
+ansible -m ping
+----
+We are going to be using the short-form options throughout this workshop
+
+====
+
+***
+
+*Step 1:* Let's start with something really basic - pinging a host.  The ```ping``` module makes sure our web hosts are responsive.
+[source,bash]
+----
+ansible -m ping web
+----
+*Step 2:*  Now let's see how we can run a good ol' fashioned Linux command and format the output using the ```command``` module.
+[source,bash]
+----
+ansible -m command -a "uptime" web -o
+----
+*Step 3:* Take a look at your web node's configuration.  The ```setup``` module displays ansible facts (and a lot of them) about an endpoint.
+[source,bash]
+----
+ansible web -m setup
+----
+*Step 4:* Now, let's install Apache using the ```yum``` module
+[source,bash]
+----
+ansible web -m yum -a "name=httpd state=present" -b
+----
+*Step 5:* OK, Apache is installed now so let's start it up using the ```service``` module
+[source,bash]
+----
+ansible web -m service -a "name=httpd state=started" -b
+----
+*Step 6:* Finally, let's clean up after ourselves.  First, stop the httpd service
+[source,bash]
+----
+ansible web -m service -a "name=httpd state=stopped" -b
+----
+*Step 7:* Next, remove the Apache package
+[source,bash]
+----
+ansible web -m yum -a "name=httpd state=absent" -b
+----
+***
+
+
+
+=== Exercise 1.1 - Writing Your First playbook
+
+
+
+****
+Now that you've gotten a sense of how ansible works, we are going to write our first
+ansible *playbook*.  The playbook is where you can take some of those ad-hoc commands you just ran
+and put them into a repeatable set of *plays* and *tasks*.
+
+A playbook can have multiple plays and a play
+can have one or multiple tasks.  The goal of a *play* is to map a group of hosts.  The goal of a *task* is to implement modules against those hosts.
+
+For our first playbook, we are only going to write one play and two tasks.
+
+[.lead]
+Section 1 - Creating a Directory Structure and Files for your Playbook
+
+There is a link:{dir_url}[best practice] on the preferred directory structures for playbooks.  We strongly encourage
+you to read and understand these practices as you develop your Ansible ninja skills.  That said,
+our playbook today is very basic and creating a complex structure will just confuse things.
+
+Instead, we are going to create a very simple directory structure for our playbook, and add just a couple of files to it.
+
+====
+Step 1: Create a directory called *apache_basic* in your home directory and change directories into it
+----
+% mkdir ~/apache_basic
+% cd ~/apache_basic
+----
+Step 2: Define your inventory.  Inventories are crucial to Ansible as they define remote machines on which you wish to run
+your playbook(s).  Use ```vi``` or ```vim``` to create a file called ```hosts```.  Then, add the appropriate definitions which can
+be viewed in ```~/lighbulb/inventory```.  (And yes, I *suppose* you could copy the file, but we'd rather you type it in so you can
+become familiar with the syntax)
+
+----
+[web]
+node-1 ansible_host=<IP Address of your node-1>
+node-2 ansible_host=<IP Address of your node-2>
+----
+Step 3: Use ```vi``` or ```vim``` to open a file called ```install_apache.yml```
+
+====
+
+[.lead]
+Section 2 - Defining Your Play
+
+Now that you are editing ```install_apache.yml```, let's begin by defining the play and then understanding what each line accomplishes
+
+
+====
+[source,bash]
+----
+---
+- hosts: web
+  name: Install the apache web service
+  become: yes
+----
+
+====
+
+- ```---``` Defines the beginning of YAML
+- ```hosts: web``` Defines which host group in your inventory on which this play will run against
+- ```name: Install the apache web service``` This describes our play
+- ```become: yes``` Enables user privilege escalation.  The default is sudo, but su, pbrun, and link:{become_url}[several others] are also supported.
+
+[.lead]
+Section 3: Adding Tasks to Your Play
+
+Now that we've defined your play, let's add some tasks to get some things done
+
+====
+[source,bash]
+----
+tasks:
+ - name: install apache
+   yum:
+     name: httpd
+     state: present
+
+ - name: start httpd
+   service:
+     name: httpd
+     state: started
+----
+
+====
+
+- ```tasks:``` This denotes that one or more tasks are about to be defined
+- ```- name:``` Each task requires a name which will print to standard output when you run your playbook.
+Therefore, give your tasks a name that is short, sweet, and to the point
+
+---
+
+[source,text]
+----
+yum:
+  name: httpd
+  state: present
+----
+- These three lines are calling the Ansible module *yum* to install httpd.
+link:{yum_url}[Click here] to see all options for the yum module.
+
+---
+
+[source,text]
+----
+service:
+  name: httpd
+  state: started
+----
+- The next few lines are using the ansible module *service* to start the httpd service.  The service module
+is the preferred way of controlling services on remote hosts.  link:{service_url}[Click here] to learn more
+about the *service* module.
+
+---
+
+[.lead]
+Section 4: Saving your Playbook
+
+Now that you've completed writing your playbook, it would be a shame not to keep it.
+
+Use the ```write/quit``` method in ```vi``` or ```vim``` to save your playbook, i.e. ```Esc :wq!```
+
+
+And that should do it.  You should now have a fully written playbook called ```install_apache.yml```.
+You are ready to automate!
+
+[NOTE]
+Ansible (well, YAML really) can be a bit particular about formatting especially around indentation/spacing.  When you all get back to the office,
+read up on this link:{yaml_url}[YAML Syntax] a bit more and it will save you some headaches later.  In the meantime, your completed playbook should look
+like this.  Take note of the spacing and alignment.
+
+[source,bash]
+----
+---
+- hosts: web
+  name: Install the apache web service
+  become: yes
+
+  tasks:
+    - name: install apache
+      yum:
+        name: httpd
+        state: present
+
+    - name: start httpd
+      service:
+        name: httpd
+        state: started
+----
+
+=== Exercise 1.2 - Running Your Playbook
+
+---
+
+****
+We are now going to run you're brand spankin' new playbook on your two web nodes.  To do this,
+ you are going to use the ```ansible-playbook``` command.
+====
+*Step 1:* From your playbook directory ( ```~/apache_basic``` ), run your playbook.
+----
+ansible-playbook -i ./hosts -k install_apache.yml
+----
+====
+
+However, before you go ahead and run that command, lets take a few moments to understand the options.
+
+- *-i* This option allows you to specify the inventory file you wish to use.
+- *-k* This option prompts you for the password of the user running the playbook.
+- *-v* Altough not used here, this increases verbosity.  Try running your playbook a second time using ```-v``` or ```-vv``` to increase the verbosity
+[NOTE]
+- *--syntax-check* If you run into any issues with your playbook running properly; you know, from that copy/pasting that you didn't do because we said "_don't do that_"; you could use this option to help find those issues like so...
+
+----
+ansible-playbook -i ./hosts -k install_apache.yml --syntax-check
+----
+
+
+---
+OK, go ahead and run your playbook as specified in *Step 1*
+
+In standard output, you should see something that looks very similar to the following:
+
+image::stdout_1.png[caption="Figure 1: ", title="apache_basic playbook stdout"]
+
+Notice that the play and each task is named so that you can see what is being done and to which node it is being done to.
+You also may notice a task in there that you didn't write;  <cough> ```setup``` <cough>.  This is because the ```setup``` module
+runs by default.  To turn if off, you can specify link:{gather_facts-url}[gather_facts: false] in your play definition like this:
+[source,bash]
+----
+---
+- hosts: web
+  name: Install the apache web service
+  become: yes
+  gather_facts: false
+----
+
+*Step 2:* Remove Apache
+
+OK, for the next several minutes or as much time as we can afford, we want to to experiment a little.
+We would like you to reverse what you've done, i.e. stop and uninstall apache on your web nodes.
+So, go ahead and edit your playbook and then when your finished, rerun it as specified in *Step 1*.
+For this exercise we aren't going to show you line by line, but we will give you a few hints.
+
+[NOTE]
+====
+- If your first task in the playbook was to install httpd and the second task was to start the service, which order do you think
+those tasks should be in now?
+- If ```started``` makes sure a service is started, then what option ensures it is stopped?
+- If ```present``` makes sure a package is installed, then what option ensures it is removed?  Er... starts with an *ab*, ends with a *sent*
+====
+
+Feel free to browse the help pages to see a list of all options.
+
+- link:{yum_url}[Ansible yum module]
+- link:{service_url}[Ansible service module]
+
